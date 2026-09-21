@@ -65,7 +65,7 @@
     <string name="label_rocketchat_token">Персональный токен доступа</string>
     <string name="rocketchat_token_recommendation">Создаются вместе в Rocket.Chat: меню профиля → Мой аккаунт → Personal Access Tokens</string>
     <string name="label_rocketchat_target">Отправить в (@пользователь или #канал)</string>
-    <string name="rocketchat_target_recommendation">Куда отправлять SMS, например @ivan или general</string>
+    <string name="rocketchat_target_recommendation">Название канала — с префиксом # (например, #general); личное сообщение — с префиксом @ (например, @ivan)</string>
     <string name="error_empty_rocketchat_server_url">Пустой URL сервера</string>
     <string name="error_wrong_rocketchat_server_url">Неверный URL-адрес</string>
     <string name="error_empty_rocketchat_user_id">Пустой User ID</string>
@@ -98,6 +98,12 @@
     <string name="menu_turn_on_all">Включить все</string>
     <string name="toast_turned_off_all">Все правила выключены</string>
     <string name="toast_turned_on_all">Все правила включены</string>
+    <string name="menu_turn_off_app">Выключить приложение</string>
+    <string name="menu_turn_on_app">Включить приложение</string>
+    <string name="turn_off_app_title">Выключить приложение?</string>
+    <string name="turn_off_app_message">Приложение полностью перестанет получать и пересылать SMS, а контрольный сигнал остановится. Ничего не удаляется — все правила, назначения и настройки останутся как есть, и пересылка возобновится сразу после включения приложения обратно.</string>
+    <string name="toast_app_turned_off">Приложение выключено</string>
+    <string name="toast_app_turned_on">Приложение включено</string>
     <string name="label_backup_section">Резервная копия</string>
     <string name="backup_info">Экспортируйте правила пересылки в файл для резервной копии, а затем импортируйте файл, чтобы восстановить их или перенести на другое устройство.</string>
     <string name="btn_export">Экспорт</string>

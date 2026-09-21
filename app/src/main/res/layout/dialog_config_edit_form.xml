@@ -27,11 +27,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_medium"
-            android:hint="@string/label_add_sender"
-            app:helperText="@string/sender_recommendation">
+            android:hint="@string/label_name"
+            app:helperText="@string/name_recommendation">
 
             <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/input_phone"
+                android:id="@+id/input_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="text" />
@@ -43,11 +43,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_medium"
-            android:hint="@string/label_name"
-            app:helperText="@string/name_recommendation">
+            android:hint="@string/label_add_sender"
+            app:helperText="@string/sender_recommendation">
 
             <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/input_name"
+                android:id="@+id/input_phone"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="text" />
@@ -81,22 +81,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="text" />
-
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            style="@style/AppTheme.TextInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_medium"
-            android:hint="@string/label_url"
-            app:helperText="@string/input_url">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/input_url"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="textUri" />
 
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -140,6 +124,23 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:visibility="gone">
+
+            <!-- Only needed for a rule that isn't using Destinations, i.e. its
+                 own manually-configured webhook. -->
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/AppTheme.TextInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/label_url"
+                app:helperText="@string/input_url">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/input_url"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textUri" />
+
+            </com.google.android.material.textfield.TextInputLayout>
 
             <TextView
                 android:id="@+id/input_sim_slot_label"

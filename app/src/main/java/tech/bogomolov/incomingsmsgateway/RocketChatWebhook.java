@@ -33,12 +33,14 @@ final class RocketChatWebhook {
         return headers;
     }
 
-    // Plain %text% — no "New SMS from %from%:" prefix, per feedback that the
-    // forwarded message should carry just the SMS body.
+    // Message body format, exact wording requested:
+    //   NewSMS from: <sender>
+    //   -----------
+    //   <message text>
     static JSONObject buildTemplate(String target) throws JSONException {
         JSONObject template = new JSONObject();
         template.put("channel", target);
-        template.put("text", "%text%");
+        template.put("text", "NewSMS from: %from%\n-----------\n%text%");
         return template;
     }
 }

@@ -12,6 +12,15 @@
         android:visible="false"
         app:showAsAction="never"
         />
+    <!-- Hard whole-app kill switch (AppKillSwitch), separate from any per-rule
+         or "turn off all" toggle — see MainActivity.toggleAppEnabled. Icon tint
+         flips to colorDanger while switched off. -->
+    <item
+        android:id="@+id/action_bar_power"
+        android:icon="@drawable/ic_power"
+        android:title="@string/menu_turn_off_app"
+        app:showAsAction="always"
+        />
     <!-- Opens a small two-row menu (Settings, Destinations) instead of
          navigating straight to Settings; see MainActivity.showHamburgerMenu. -->
     <item

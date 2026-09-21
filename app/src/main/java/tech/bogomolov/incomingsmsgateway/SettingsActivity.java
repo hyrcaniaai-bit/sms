@@ -179,8 +179,10 @@ public class SettingsActivity extends AppCompatActivity {
 
     // Starts the foreground SMS service if it isn't already running, so imported
     // rules take effect without a restart. Mirrors MainActivity.startService().
+    // Respects the whole-app kill switch (AppKillSwitch): while switched off,
+    // an import should not resurrect the service on its own.
     private void startServiceIfNeeded() {
-        if (isServiceRunning()) {
+        if (isServiceRunning() || !AppKillSwitch.isEnabled(this)) {
             return;
         }
         Intent intent = new Intent(this, SmsReceiverService.class);
@@ -240,8 +242,10 @@ public class SettingsActivity extends AppCompatActivity {
     // both (re)schedules a running service and starts one if needed (e.g. heartbeat
     // turned on while no forwarding rules exist). When disabling with no service
     // running, there is nothing to do — don't spin one up just to stop the ping.
+    // While the whole-app kill switch (AppKillSwitch) is off, the settings still
+    // save normally, they just aren't acted on until the app is turned back on.
     private void applyHeartbeat(HeartbeatSettings settings) {
-        if (!settings.isEnabled() && !isServiceRunning()) {
+        if ((!settings.isEnabled() && !isServiceRunning()) || !AppKillSwitch.isEnabled(this)) {
             return;
         }
 

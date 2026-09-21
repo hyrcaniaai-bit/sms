@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.DataSetObserver;
+import android.graphics.PorterDuff;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -159,6 +161,22 @@ public class MainActivity extends AppCompatActivity {
                     : getString(R.string.menu_turn_on_all));
         }
 
+        // Whole-app kill switch (AppKillSwitch) — a harder, separate stop from
+        // the per-rule toggles above. Tinted red while off so it's obvious at a
+        // glance that nothing is being forwarded right now.
+        MenuItem powerItem = menu.findItem(R.id.action_bar_power);
+        boolean appEnabled = AppKillSwitch.isEnabled(this);
+        powerItem.setTitle(appEnabled ? getString(R.string.menu_turn_off_app) : getString(R.string.menu_turn_on_app));
+        Drawable icon = powerItem.getIcon();
+        if (icon != null) {
+            icon.mutate();
+            if (appEnabled) {
+                icon.clearColorFilter();
+            } else {
+                icon.setColorFilter(ContextCompat.getColor(this, R.color.colorDanger), PorterDuff.Mode.SRC_IN);
+            }
+        }
+
         return super.onPrepareOptionsMenu(menu);
     }
 
@@ -168,6 +186,11 @@ public class MainActivity extends AppCompatActivity {
 
         if (id == R.id.action_bar_menu) {
             showHamburgerMenu();
+            return true;
+        }
+
+        if (id == R.id.action_bar_power) {
+            toggleAppEnabled();
             return true;
         }
 
@@ -268,6 +291,36 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    // A hard whole-app stop, independent from every rule's own on/off switch and
+    // from "turn off all" (both of which only flip stored isSmsEnabled flags,
+    // leaving the app itself running). Turning off asks for confirmation since
+    // it silently stops all SMS handling until turned back on; turning back on
+    // is non-destructive so it doesn't need one.
+    private void toggleAppEnabled() {
+        if (AppKillSwitch.isEnabled(this)) {
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.turn_off_app_title)
+                    .setMessage(R.string.turn_off_app_message)
+                    .setPositiveButton(R.string.menu_turn_off_app, (dialog, which) -> {
+                        AppKillSwitch.setEnabled(this, false);
+                        stopSmsService();
+                        invalidateOptionsMenu();
+                        Toast.makeText(this, R.string.toast_app_turned_off, Toast.LENGTH_LONG).show();
+                    })
+                    .setNegativeButton(R.string.btn_cancel, null)
+                    .show();
+        } else {
+            AppKillSwitch.setEnabled(this, true);
+            startService();
+            invalidateOptionsMenu();
+            Toast.makeText(this, R.string.toast_app_turned_on, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void stopSmsService() {
+        getApplicationContext().stopService(new Intent(this, SmsReceiverService.class));
+    }
+
     private void showList() {
         context = this;
         ListView listview = findViewById(R.id.listView);
@@ -292,7 +345,9 @@ public class MainActivity extends AppCompatActivity {
         FloatingActionButton fab = findViewById(R.id.btn_add);
         fab.setOnClickListener(this.showAddDialog());
 
-        if (!this.isServiceRunning()) {
+        // Respect the whole-app kill switch: don't resurrect the service just
+        // because the screen was reopened while switched off.
+        if (AppKillSwitch.isEnabled(this) && !this.isServiceRunning()) {
             this.startService();
         }
     }

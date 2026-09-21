@@ -65,7 +65,7 @@
     <string name="label_rocketchat_token">Personal access token</string>
     <string name="rocketchat_token_recommendation">Create both together in Rocket.Chat: avatar menu → My Account → Personal Access Tokens</string>
     <string name="label_rocketchat_target">Send to (@username or #channel)</string>
-    <string name="rocketchat_target_recommendation">Where the SMS should be posted, e.g. @john or general</string>
+    <string name="rocketchat_target_recommendation">A channel name needs the # prefix (e.g. #general); a direct message needs the @ prefix (e.g. @john)</string>
     <string name="error_empty_rocketchat_server_url">Empty server URL</string>
     <string name="error_wrong_rocketchat_server_url">Wrong URL</string>
     <string name="error_empty_rocketchat_user_id">Empty User ID</string>
@@ -98,6 +98,12 @@
     <string name="menu_turn_on_all">Turn on all</string>
     <string name="toast_turned_off_all">All rules turned off</string>
     <string name="toast_turned_on_all">All rules turned on</string>
+    <string name="menu_turn_off_app">Turn off app</string>
+    <string name="menu_turn_on_app">Turn on app</string>
+    <string name="turn_off_app_title">Turn off the app?</string>
+    <string name="turn_off_app_message">The app will stop receiving and forwarding SMS entirely, and the heartbeat ping will stop. Nothing is deleted — every rule, destination and setting stays exactly as it is, and forwarding resumes as soon as you turn the app back on.</string>
+    <string name="toast_app_turned_off">App turned off</string>
+    <string name="toast_app_turned_on">App turned on</string>
     <string name="label_backup_section">Backup</string>
     <string name="backup_info">Export your forwarding rules to a file to back them up, then import the file to restore them or move them to another device.</string>
     <string name="btn_export">Export</string>

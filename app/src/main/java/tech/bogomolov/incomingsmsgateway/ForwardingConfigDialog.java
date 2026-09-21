@@ -420,9 +420,12 @@ public class ForwardingConfigDialog {
 
     // True when the rule deviates from the defaults on any advanced field, so the
     // edit dialog knows to reveal the advanced section instead of hiding settings
-    // the user already relies on.
+    // the user already relies on. The Webhook URL field lives in Advanced too, so
+    // a rule with no Destinations selected (meaning it depends on that URL) also
+    // counts, or the user would have to hunt for the URL they're relying on.
     private boolean hasNonDefaultAdvanced(ForwardingConfig config) {
-        return config.getSimSlot() != 0
+        return destinationsArrayLength(config.getDestinationIds()) == 0
+                || config.getSimSlot() != 0
                 || !ForwardingConfig.getDefaultJsonTemplate().equals(config.getTemplate())
                 || !ForwardingConfig.getDefaultJsonHeaders().equals(config.getHeaders())
                 || config.getRetriesNumber() != ForwardingConfig.getDefaultRetriesNumber()
