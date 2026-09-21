@@ -5,12 +5,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.telephony.SubscriptionManager;
-import android.text.InputType;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -172,7 +170,7 @@ public class ForwardingConfigDialog {
         });
 
         final EditText destinationsInput = view.findViewById(R.id.input_destinations);
-        destinationsInput.setText(config.getDestinations());
+        destinationsInput.setText(config.getDestinationIds());
 
         // Auto-expand advanced when editing a rule that already relies on it, so the
         // user doesn't have to hunt for settings they previously configured.
@@ -313,15 +311,15 @@ public class ForwardingConfigDialog {
         config.setLocalMode(localMode);
         config.setSignHmacSha256(signHmacSha256);
         config.setSignHmacSha256Secret(signHmacSha256Secret);
-        config.setDestinations(destinationsJson);
+        config.setDestinationIds(destinationsJson);
 
         return config;
     }
 
-    // Parses a destinations JSON array string just far enough to get its length;
-    // used only to decide whether the URL field is required (see populateConfig
-    // and updateDestinationsButtonLabel). Treats anything unparseable as empty
-    // rather than blocking save over it.
+    // Parses a JSON array string just far enough to get its length; used to
+    // decide whether the URL field is required (see populateConfig) and to
+    // count selected destinations for the button label. Treats anything
+    // unparseable as empty rather than blocking save over it.
     private int destinationsArrayLength(String destinationsJson) {
         try {
             return new JSONArray(destinationsJson == null || destinationsJson.isEmpty() ? "[]" : destinationsJson).length();
@@ -352,157 +350,64 @@ public class ForwardingConfigDialog {
         header.setText(arrow + context.getString(R.string.label_advanced));
     }
 
-    // Wires the "Destinations" button: a sub-dialog where a rule can be pointed
-    // at one shared Rocket.Chat account (server/User ID/personal access token)
-    // plus any number of recipients under it, and/or any number of SMS-relay
-    // phone numbers — all without the user ever touching the advanced
-    // URL/headers/template fields. The result is stored as a JSON array in the
-    // hidden input_destinations field (see ForwardingConfig.DEST_* constants),
-    // read back by populateConfig() and consumed at dispatch time by
-    // SmsBroadcastReceiver.
+    // Wires the "Destinations" button: it opens a multi-select list of every
+    // reusable Destination defined on the Destinations screen (reached from the
+    // hamburger menu), rather than asking for Rocket.Chat/SMS details inline.
+    // The selected keys are stored as a JSON array in the hidden
+    // input_destinations field, read back by populateConfig() and resolved by
+    // key at dispatch time in SmsBroadcastReceiver.
     private void setupDestinations(View formView) {
         View button = formView.findViewById(R.id.btn_destinations);
-        button.setOnClickListener(v -> showDestinationsDialog(formView));
+        button.setOnClickListener(v -> showDestinationsPicker(formView));
     }
 
-    private void showDestinationsDialog(View formView) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        View view = layoutInflater.inflate(R.layout.dialog_destinations, null);
+    private void showDestinationsPicker(View formView) {
+        ArrayList<Destination> destinations = Destination.getAll(context);
+        if (destinations.isEmpty()) {
+            new AlertDialog.Builder(context)
+                    .setMessage(R.string.no_destinations_yet)
+                    .setPositiveButton(R.string.btn_close, null)
+                    .show();
+            return;
+        }
 
-        final EditText serverUrlInput = view.findViewById(R.id.input_rc_server_url);
-        final EditText userIdInput = view.findViewById(R.id.input_rc_user_id);
-        final EditText tokenInput = view.findViewById(R.id.input_rc_token);
-        final ViewGroup rocketChatContainer = view.findViewById(R.id.rocketchat_targets_container);
-        final ViewGroup smsContainer = view.findViewById(R.id.sms_targets_container);
-
-        // Pre-populate from whatever is already stored on this rule (empty on a
-        // brand-new rule, or when re-opening after a previous Apply).
         final EditText destinationsInput = formView.findViewById(R.id.input_destinations);
+        ArrayList<String> selectedIds = new ArrayList<>();
         try {
             JSONArray existing = new JSONArray(destinationsInput.getText().toString());
             for (int i = 0; i < existing.length(); i++) {
-                JSONObject destination = existing.getJSONObject(i);
-                String type = destination.optString(ForwardingConfig.DEST_TYPE, "");
-                if (ForwardingConfig.DEST_TYPE_ROCKETCHAT.equals(type)) {
-                    // All Rocket.Chat recipients on a rule share one account; the
-                    // account fields only need filling in once, from any entry.
-                    if (TextUtils.isEmpty(serverUrlInput.getText())) {
-                        serverUrlInput.setText(destination.optString(ForwardingConfig.DEST_SERVER_URL));
-                        userIdInput.setText(destination.optString(ForwardingConfig.DEST_USER_ID));
-                        tokenInput.setText(destination.optString(ForwardingConfig.DEST_TOKEN));
-                    }
-                    addTargetRow(rocketChatContainer, destination.optString(ForwardingConfig.DEST_TARGET),
-                            InputType.TYPE_CLASS_TEXT);
-                } else if (ForwardingConfig.DEST_TYPE_SMS.equals(type)) {
-                    addTargetRow(smsContainer, destination.optString(ForwardingConfig.DEST_PHONE_NUMBER),
-                            InputType.TYPE_CLASS_PHONE);
-                }
+                selectedIds.add(existing.getString(i));
             }
         } catch (JSONException e) {
-            Log.e("ForwardingConfigDialog", "invalid stored destinations, starting empty: " + e.getMessage());
+            Log.e("ForwardingConfigDialog", "invalid stored destination ids, starting empty: " + e.getMessage());
         }
 
-        view.findViewById(R.id.btn_add_rocketchat_target).setOnClickListener(
-                v -> addTargetRow(rocketChatContainer, "", InputType.TYPE_CLASS_TEXT));
-        view.findViewById(R.id.btn_add_sms_target).setOnClickListener(
-                v -> addTargetRow(smsContainer, "", InputType.TYPE_CLASS_PHONE));
+        CharSequence[] items = new CharSequence[destinations.size()];
+        boolean[] checked = new boolean[destinations.size()];
+        for (int i = 0; i < destinations.size(); i++) {
+            Destination destination = destinations.get(i);
+            items[i] = destination.getSummary(context);
+            checked[i] = selectedIds.contains(destination.getKey());
+        }
 
-        builder.setTitle(R.string.title_destinations);
-        builder.setView(view);
-        builder.setPositiveButton(R.string.btn_apply, null);
-        builder.setNegativeButton(R.string.btn_cancel, null);
-
-        final AlertDialog dialog = builder.show();
-        Objects.requireNonNull(dialog.getWindow())
-                .setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String serverUrl = serverUrlInput.getText().toString().trim();
-            String userId = userIdInput.getText().toString().trim();
-            String token = tokenInput.getText().toString().trim();
-            ArrayList<String> targets = collectNonEmptyValues(rocketChatContainer);
-            ArrayList<String> phoneNumbers = collectNonEmptyValues(smsContainer);
-
-            if (!targets.isEmpty()) {
-                if (TextUtils.isEmpty(serverUrl)) {
-                    serverUrlInput.setError(context.getString(R.string.error_empty_rocketchat_server_url));
-                    return;
-                }
-                try {
-                    new URL(RocketChatWebhook.buildEndpoint(serverUrl));
-                } catch (MalformedURLException e) {
-                    serverUrlInput.setError(context.getString(R.string.error_wrong_rocketchat_server_url));
-                    return;
-                }
-                if (TextUtils.isEmpty(userId)) {
-                    userIdInput.setError(context.getString(R.string.error_empty_rocketchat_user_id));
-                    return;
-                }
-                if (TextUtils.isEmpty(token)) {
-                    tokenInput.setError(context.getString(R.string.error_empty_rocketchat_token));
-                    return;
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle(R.string.title_select_destinations);
+        builder.setMultiChoiceItems(items, checked, (dialog, which, isChecked) -> checked[which] = isChecked);
+        builder.setPositiveButton(R.string.btn_apply, (dialog, which) -> {
+            JSONArray result = new JSONArray();
+            for (int i = 0; i < destinations.size(); i++) {
+                if (checked[i]) {
+                    result.put(destinations.get(i).getKey());
                 }
             }
-
-            try {
-                JSONArray destinations = new JSONArray();
-                for (String target : targets) {
-                    JSONObject destination = new JSONObject();
-                    destination.put(ForwardingConfig.DEST_TYPE, ForwardingConfig.DEST_TYPE_ROCKETCHAT);
-                    destination.put(ForwardingConfig.DEST_SERVER_URL, serverUrl.replaceAll("/+$", ""));
-                    destination.put(ForwardingConfig.DEST_USER_ID, userId);
-                    destination.put(ForwardingConfig.DEST_TOKEN, token);
-                    destination.put(ForwardingConfig.DEST_TARGET, target);
-                    destinations.put(destination);
-                }
-                for (String phoneNumber : phoneNumbers) {
-                    JSONObject destination = new JSONObject();
-                    destination.put(ForwardingConfig.DEST_TYPE, ForwardingConfig.DEST_TYPE_SMS);
-                    destination.put(ForwardingConfig.DEST_PHONE_NUMBER, phoneNumber);
-                    destinations.put(destination);
-                }
-
-                destinationsInput.setText(destinations.toString());
-                updateDestinationsButtonLabel(formView);
-            } catch (JSONException e) {
-                // Every value above is a plain string being put into a fresh
-                // JSONObject; there is nothing here that can actually fail.
-                return;
-            }
-
-            dialog.dismiss();
+            destinationsInput.setText(result.toString());
+            updateDestinationsButtonLabel(formView);
         });
+        builder.setNegativeButton(R.string.btn_cancel, null);
+        builder.show();
     }
 
-    // Appends one removable "target" row (an EditText plus an × button) to a
-    // Rocket.Chat-recipients or SMS-numbers container.
-    private void addTargetRow(ViewGroup container, String initialValue, int inputType) {
-        View row = layoutInflater.inflate(R.layout.row_destination_target, container, false);
-        EditText input = row.findViewById(R.id.target_input);
-        input.setInputType(inputType);
-        input.setHint(inputType == InputType.TYPE_CLASS_PHONE
-                ? R.string.hint_sms_target
-                : R.string.hint_rocketchat_target);
-        if (initialValue != null) {
-            input.setText(initialValue);
-        }
-        row.findViewById(R.id.remove_button).setOnClickListener(v -> container.removeView(row));
-        container.addView(row);
-    }
-
-    private ArrayList<String> collectNonEmptyValues(ViewGroup container) {
-        ArrayList<String> values = new ArrayList<>();
-        for (int i = 0; i < container.getChildCount(); i++) {
-            EditText input = container.getChildAt(i).findViewById(R.id.target_input);
-            String value = input.getText().toString().trim();
-            if (!value.isEmpty()) {
-                values.add(value);
-            }
-        }
-        return values;
-    }
-
-    // Shows a recipient count on the button itself once any destination is set,
+    // Shows a selection count on the button itself once anything is picked,
     // since the JSON behind it is deliberately hidden from the user.
     private void updateDestinationsButtonLabel(View formView) {
         Button button = formView.findViewById(R.id.btn_destinations);
@@ -563,15 +468,15 @@ public class ForwardingConfigDialog {
             return;
         }
 
-        JSONArray destinations;
+        JSONArray destinationIds;
         try {
-            destinations = config.getDestinationsArray();
+            destinationIds = config.getDestinationIdsArray();
         } catch (JSONException e) {
-            destinations = new JSONArray();
+            destinationIds = new JSONArray();
         }
 
-        if (destinations.length() > 0) {
-            testDestinations(config, destinations);
+        if (destinationIds.length() > 0) {
+            testDestinations(config, destinationIds);
             return;
         }
 
@@ -603,28 +508,31 @@ public class ForwardingConfigDialog {
         thread.start();
     }
 
-    // Tests every Rocket.Chat destination with a real HTTP call each (one Toast
-    // per result). SMS destinations are skipped here rather than sending an
-    // actual text message just to test the button.
-    private void testDestinations(ForwardingConfig config, JSONArray destinations) {
+    // Tests every selected Rocket.Chat destination with a real HTTP call each
+    // (one Toast per result). SMS destinations are skipped here rather than
+    // sending an actual text message just to test the button. A destination the
+    // user has since deleted from the Destinations screen is silently skipped.
+    private void testDestinations(ForwardingConfig config, JSONArray destinationIds) {
         Thread thread = new Thread(() -> {
             boolean testedAny = false;
-            for (int i = 0; i < destinations.length(); i++) {
+            for (int i = 0; i < destinationIds.length(); i++) {
+                String key;
                 try {
-                    JSONObject destination = destinations.getJSONObject(i);
-                    if (!ForwardingConfig.DEST_TYPE_ROCKETCHAT.equals(
-                            destination.optString(ForwardingConfig.DEST_TYPE, ""))) {
-                        continue;
-                    }
-                    testedAny = true;
+                    key = destinationIds.getString(i);
+                } catch (JSONException e) {
+                    continue;
+                }
+                Destination destination = Destination.findByKey(context, key);
+                if (destination == null || !Destination.TYPE_ROCKETCHAT.equals(destination.getType())) {
+                    continue;
+                }
+                testedAny = true;
 
-                    String endpoint = RocketChatWebhook.buildEndpoint(
-                            destination.getString(ForwardingConfig.DEST_SERVER_URL));
+                try {
+                    String endpoint = RocketChatWebhook.buildEndpoint(destination.getServerUrl());
                     String headers = RocketChatWebhook.buildHeaders(
-                            destination.getString(ForwardingConfig.DEST_USER_ID),
-                            destination.getString(ForwardingConfig.DEST_TOKEN)).toString();
-                    String template = RocketChatWebhook.buildTemplate(
-                            destination.getString(ForwardingConfig.DEST_TARGET)).toString();
+                            destination.getUserId(), destination.getToken()).toString();
+                    String template = RocketChatWebhook.buildTemplate(destination.getTarget()).toString();
 
                     String savedTemplate = config.getTemplate();
                     config.setTemplate(template);
@@ -643,7 +551,7 @@ public class ForwardingConfigDialog {
                     in.putExtra(BROADCAST_KEY, result);
                     context.sendBroadcast(in);
                 } catch (JSONException e) {
-                    Log.e("ForwardingConfigDialog", "invalid destination in test: " + e.getMessage());
+                    Log.e("ForwardingConfigDialog", "invalid Rocket.Chat destination in test: " + e.getMessage());
                 }
             }
             if (!testedAny) {

@@ -12,10 +12,12 @@
         android:visible="false"
         app:showAsAction="never"
         />
+    <!-- Opens a small two-row menu (Settings, Destinations) instead of
+         navigating straight to Settings; see MainActivity.showHamburgerMenu. -->
     <item
-        android:id="@+id/action_bar_settings"
-        android:icon="@drawable/ic_settings"
-        android:title="@string/menu_settings"
+        android:id="@+id/action_bar_menu"
+        android:icon="@drawable/ic_menu"
+        android:title="@string/menu_hamburger"
         app:showAsAction="always"
         />
     <item

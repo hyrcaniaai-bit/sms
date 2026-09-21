@@ -166,8 +166,8 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
 
-        if (id == R.id.action_bar_settings) {
-            startActivity(new Intent(this, SettingsActivity.class));
+        if (id == R.id.action_bar_menu) {
+            showHamburgerMenu();
             return true;
         }
 
@@ -253,6 +253,19 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    // The hamburger action-bar icon opens a plain two-row picker rather than a
+    // navigation drawer, which would be a lot more moving parts (a DrawerLayout,
+    // a NavigationView, syncing its selected state) for exactly two destinations.
+    private void showHamburgerMenu() {
+        CharSequence[] items = {getString(R.string.menu_settings), getString(R.string.menu_destinations)};
+        new AlertDialog.Builder(this)
+                .setItems(items, (dialog, which) -> {
+                    Class<?> target = which == 0 ? SettingsActivity.class : DestinationsActivity.class;
+                    startActivity(new Intent(this, target));
+                })
+                .show();
     }
 
     private void showList() {

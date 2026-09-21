@@ -56,7 +56,7 @@ public class ListAdapter extends ArrayAdapter<ForwardingConfig> {
         TextView url = row.findViewById(R.id.text_url);
         int destinationsCount = 0;
         try {
-            destinationsCount = config.getDestinationsArray().length();
+            destinationsCount = config.getDestinationIdsArray().length();
         } catch (org.json.JSONException ignored) {
         }
         url.setText(destinationsCount > 0

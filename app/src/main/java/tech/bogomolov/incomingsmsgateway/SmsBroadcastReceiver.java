@@ -15,7 +15,6 @@ import androidx.work.Data;
 
 import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -84,49 +83,56 @@ public class SmsBroadcastReceiver extends BroadcastReceiver {
             }
 
             long timeStamp = messages[0].getTimestampMillis();
-            JSONArray destinations;
+            JSONArray destinationIds;
             try {
-                destinations = config.getDestinationsArray();
+                destinationIds = config.getDestinationIdsArray();
             } catch (JSONException e) {
-                Log.e("SmsBroadcastReceiver", "invalid destinations JSON, falling back to the rule's own webhook: " + e.getMessage());
-                destinations = new JSONArray();
+                Log.e("SmsBroadcastReceiver", "invalid destination ids JSON, falling back to the rule's own webhook: " + e.getMessage());
+                destinationIds = new JSONArray();
             }
 
-            if (destinations.length() > 0) {
+            if (destinationIds.length() > 0) {
                 // "Destinations" replaces the rule's own URL/template/headers
-                // entirely — a rule that has any destination configured is
+                // entirely — a rule that has any destination selected is
                 // dispatched only to those, not also to its (possibly stale or
                 // never-filled-in) single webhook fields.
-                this.dispatchDestinations(config, destinations, sender, slotName, content.toString(), timeStamp);
+                this.dispatchDestinations(config, destinationIds, sender, slotName, content.toString(), timeStamp);
             } else {
                 this.callWebHook(config, sender, slotName, content.toString(), timeStamp);
             }
         }
     }
 
-    // Fans one incoming SMS out to every destination configured for this rule
-    // (added via the "Destinations" button in the edit dialog): each Rocket.Chat
-    // entry becomes its own webhook call (reusing callWebHook/RequestWorker, so it
-    // gets the same retry/failed-message handling as a normal rule), and each SMS
-    // entry is relayed as an actual outgoing text message.
-    private void dispatchDestinations(ForwardingConfig config, JSONArray destinations,
+    // Fans one incoming SMS out to every destination selected for this rule
+    // (picked from the reusable Destinations list via the "Destinations" button
+    // in the edit dialog): each Rocket.Chat destination becomes its own webhook
+    // call (reusing callWebHook/RequestWorker, so it gets the same retry/failed-
+    // message handling as a normal rule), and each SMS destination is relayed as
+    // an actual outgoing text message. A destination the user has since deleted
+    // from the Destinations screen is silently skipped.
+    private void dispatchDestinations(ForwardingConfig config, JSONArray destinationIds,
                                        String sender, String slotName, String content, long timeStamp) {
-        for (int i = 0; i < destinations.length(); i++) {
-            JSONObject destination;
+        for (int i = 0; i < destinationIds.length(); i++) {
+            String key;
             try {
-                destination = destinations.getJSONObject(i);
+                key = destinationIds.getString(i);
             } catch (JSONException e) {
-                Log.e("SmsBroadcastReceiver", "invalid destination entry #" + i + ": " + e.getMessage());
+                Log.e("SmsBroadcastReceiver", "invalid destination id entry #" + i + ": " + e.getMessage());
                 continue;
             }
 
-            String type = destination.optString(ForwardingConfig.DEST_TYPE, "");
-            if (ForwardingConfig.DEST_TYPE_ROCKETCHAT.equals(type)) {
+            Destination destination = Destination.findByKey(this.context, key);
+            if (destination == null) {
+                Log.e("SmsBroadcastReceiver", "destination " + key + " no longer exists, skipping");
+                continue;
+            }
+
+            if (Destination.TYPE_ROCKETCHAT.equals(destination.getType())) {
                 dispatchRocketChatDestination(config, destination, sender, slotName, content, timeStamp);
-            } else if (ForwardingConfig.DEST_TYPE_SMS.equals(type)) {
+            } else if (Destination.TYPE_SMS.equals(destination.getType())) {
                 dispatchSmsDestination(destination, content);
             } else {
-                Log.e("SmsBroadcastReceiver", "unknown destination type: " + type);
+                Log.e("SmsBroadcastReceiver", "unknown destination type: " + destination.getType());
             }
         }
     }
@@ -137,17 +143,13 @@ public class SmsBroadcastReceiver extends BroadcastReceiver {
     // ForwardingConfig.getAll() — nothing here is saved, and callWebHook reads
     // every field synchronously into the WorkManager Data before returning, so
     // there's no later read of the temporarily-swapped values.
-    private void dispatchRocketChatDestination(ForwardingConfig config, JSONObject destination,
+    private void dispatchRocketChatDestination(ForwardingConfig config, Destination destination,
                                                 String sender, String slotName, String content, long timeStamp) {
         try {
-            String serverUrl = destination.getString(ForwardingConfig.DEST_SERVER_URL);
-            String userId = destination.getString(ForwardingConfig.DEST_USER_ID);
-            String token = destination.getString(ForwardingConfig.DEST_TOKEN);
-            String target = destination.getString(ForwardingConfig.DEST_TARGET);
-
-            String endpoint = RocketChatWebhook.buildEndpoint(serverUrl);
-            String headers = RocketChatWebhook.buildHeaders(userId, token).toString();
-            String template = RocketChatWebhook.buildTemplate(target).toString();
+            String endpoint = RocketChatWebhook.buildEndpoint(destination.getServerUrl());
+            String headers = RocketChatWebhook.buildHeaders(
+                    destination.getUserId(), destination.getToken()).toString();
+            String template = RocketChatWebhook.buildTemplate(destination.getTarget()).toString();
 
             String savedUrl = config.getUrl();
             String savedTemplate = config.getTemplate();
@@ -176,14 +178,8 @@ public class SmsBroadcastReceiver extends BroadcastReceiver {
     // Requires SEND_SMS, requested best-effort in MainActivity; if it was denied
     // this destination just silently can't deliver, same as any other
     // permission-gated feature in this app — it never crashes the receiver.
-    private void dispatchSmsDestination(JSONObject destination, String content) {
-        String phoneNumber;
-        try {
-            phoneNumber = destination.getString(ForwardingConfig.DEST_PHONE_NUMBER);
-        } catch (JSONException e) {
-            Log.e("SmsBroadcastReceiver", "invalid SMS destination: " + e.getMessage());
-            return;
-        }
+    private void dispatchSmsDestination(Destination destination, String content) {
+        String phoneNumber = destination.getPhoneNumber();
         if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
             return;
         }

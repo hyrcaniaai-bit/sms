@@ -62,6 +62,11 @@
             android:label="@string/title_settings" />
 
         <activity
+            android:name=".DestinationsActivity"
+            android:exported="false"
+            android:label="@string/title_destinations" />
+
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name">
