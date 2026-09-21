@@ -38,6 +38,20 @@ public class ForwardingConfig {
     private static final String KEY_SIGN_HMAC_SHA256_SECRET = "sign_hmac_sha256_secret";
     private static final String KEY_STORE_FAILED = "store_failed";
     private static final String KEY_LOCAL_MODE = "local_mode";
+    private static final String KEY_NAME = "name";
+    private static final String KEY_DESTINATIONS = "destinations";
+
+    // Keys used inside one element of the "destinations" JSON array (see
+    // getDestinations()/setDestinations()). Shared with RocketChatWebhook and
+    // SmsBroadcastReceiver, which both read/write this same shape.
+    public static final String DEST_TYPE = "type";
+    public static final String DEST_TYPE_ROCKETCHAT = "rocketchat";
+    public static final String DEST_TYPE_SMS = "sms";
+    public static final String DEST_SERVER_URL = "serverUrl";
+    public static final String DEST_USER_ID = "userId";
+    public static final String DEST_TOKEN = "token";
+    public static final String DEST_TARGET = "target";
+    public static final String DEST_PHONE_NUMBER = "phoneNumber";
 
     private String key;
     private String sender;
@@ -55,6 +69,8 @@ public class ForwardingConfig {
     private String signHmacSha256Secret;
     private boolean storeFailed = false;
     private boolean localMode = false; // forward without a validated internet connection
+    private String name = ""; // optional friendly label shown in the list instead of the sender
+    private String destinations = "[]"; // JSON array of {type, ...}; see DEST_* constants
 
     public ForwardingConfig(Context context) {
         this.context = context;
@@ -188,6 +204,29 @@ public class ForwardingConfig {
         this.isSmsEnabled = isSmsEnabled;
     }
 
+    public String getName() {
+        return this.name;
+    }
+
+    public void setName(String name) {
+        this.name = name == null ? "" : name;
+    }
+
+    // Raw JSON array string; see DEST_* constants for the shape of each element.
+    public String getDestinations() {
+        return this.destinations;
+    }
+
+    public void setDestinations(String destinations) {
+        this.destinations = (destinations == null || destinations.isEmpty()) ? "[]" : destinations;
+    }
+
+    // Parsed view of getDestinations(), used by dispatch (SmsBroadcastReceiver)
+    // and by the edit dialog to pre-populate its rows.
+    public JSONArray getDestinationsArray() throws JSONException {
+        return new JSONArray(this.destinations == null || this.destinations.isEmpty() ? "[]" : this.destinations);
+    }
+
     public static String getDefaultJsonTemplate() {
         return "{\n  \"from\":\"%from%\",\n  \"text\":\"%text%\",\n  \"sentStamp\":%sentStamp%,\n  \"receivedStamp\":%receivedStamp%,\n  \"sim\":\"%sim%\"\n}";
     }
@@ -225,6 +264,8 @@ public class ForwardingConfig {
         json.put(KEY_SIGN_HMAC_SHA256_SECRET, this.signHmacSha256Secret);
         json.put(KEY_STORE_FAILED, this.storeFailed);
         json.put(KEY_LOCAL_MODE, this.localMode);
+        json.put(KEY_NAME, this.name);
+        json.put(KEY_DESTINATIONS, this.destinations);
         return json;
     }
 
@@ -329,6 +370,12 @@ public class ForwardingConfig {
                     }
                     if (json.has(KEY_IS_SENDER_REGEX)) {
                         config.setIsSenderRegex(json.getBoolean(KEY_IS_SENDER_REGEX));
+                    }
+                    if (json.has(KEY_NAME)) {
+                        config.setName(json.getString(KEY_NAME));
+                    }
+                    if (json.has(KEY_DESTINATIONS)) {
+                        config.setDestinations(json.getString(KEY_DESTINATIONS));
                     }
                 } catch (JSONException ignored) {
                 }

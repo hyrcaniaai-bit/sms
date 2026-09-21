@@ -1,15 +1,24 @@
 package tech.bogomolov.incomingsmsgateway;
 
+import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.util.Log;
 
+import androidx.core.content.ContextCompat;
 import androidx.work.Data;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -74,7 +83,124 @@ public class SmsBroadcastReceiver extends BroadcastReceiver {
                 slotName = "sim" + slotId;
             }
 
-            this.callWebHook(config, sender, slotName, content.toString(), messages[0].getTimestampMillis());
+            long timeStamp = messages[0].getTimestampMillis();
+            JSONArray destinations;
+            try {
+                destinations = config.getDestinationsArray();
+            } catch (JSONException e) {
+                Log.e("SmsBroadcastReceiver", "invalid destinations JSON, falling back to the rule's own webhook: " + e.getMessage());
+                destinations = new JSONArray();
+            }
+
+            if (destinations.length() > 0) {
+                // "Destinations" replaces the rule's own URL/template/headers
+                // entirely — a rule that has any destination configured is
+                // dispatched only to those, not also to its (possibly stale or
+                // never-filled-in) single webhook fields.
+                this.dispatchDestinations(config, destinations, sender, slotName, content.toString(), timeStamp);
+            } else {
+                this.callWebHook(config, sender, slotName, content.toString(), timeStamp);
+            }
+        }
+    }
+
+    // Fans one incoming SMS out to every destination configured for this rule
+    // (added via the "Destinations" button in the edit dialog): each Rocket.Chat
+    // entry becomes its own webhook call (reusing callWebHook/RequestWorker, so it
+    // gets the same retry/failed-message handling as a normal rule), and each SMS
+    // entry is relayed as an actual outgoing text message.
+    private void dispatchDestinations(ForwardingConfig config, JSONArray destinations,
+                                       String sender, String slotName, String content, long timeStamp) {
+        for (int i = 0; i < destinations.length(); i++) {
+            JSONObject destination;
+            try {
+                destination = destinations.getJSONObject(i);
+            } catch (JSONException e) {
+                Log.e("SmsBroadcastReceiver", "invalid destination entry #" + i + ": " + e.getMessage());
+                continue;
+            }
+
+            String type = destination.optString(ForwardingConfig.DEST_TYPE, "");
+            if (ForwardingConfig.DEST_TYPE_ROCKETCHAT.equals(type)) {
+                dispatchRocketChatDestination(config, destination, sender, slotName, content, timeStamp);
+            } else if (ForwardingConfig.DEST_TYPE_SMS.equals(type)) {
+                dispatchSmsDestination(destination, content);
+            } else {
+                Log.e("SmsBroadcastReceiver", "unknown destination type: " + type);
+            }
+        }
+    }
+
+    // Momentarily points `config` at this one destination's webhook and reuses
+    // callWebHook exactly as a normal rule would use it, then restores the
+    // original fields. Safe because `config` is an in-memory instance from
+    // ForwardingConfig.getAll() — nothing here is saved, and callWebHook reads
+    // every field synchronously into the WorkManager Data before returning, so
+    // there's no later read of the temporarily-swapped values.
+    private void dispatchRocketChatDestination(ForwardingConfig config, JSONObject destination,
+                                                String sender, String slotName, String content, long timeStamp) {
+        try {
+            String serverUrl = destination.getString(ForwardingConfig.DEST_SERVER_URL);
+            String userId = destination.getString(ForwardingConfig.DEST_USER_ID);
+            String token = destination.getString(ForwardingConfig.DEST_TOKEN);
+            String target = destination.getString(ForwardingConfig.DEST_TARGET);
+
+            String endpoint = RocketChatWebhook.buildEndpoint(serverUrl);
+            String headers = RocketChatWebhook.buildHeaders(userId, token).toString();
+            String template = RocketChatWebhook.buildTemplate(target).toString();
+
+            String savedUrl = config.getUrl();
+            String savedTemplate = config.getTemplate();
+            String savedHeaders = config.getHeaders();
+            boolean savedSignHmac = config.getSignHmacSha256();
+
+            config.setUrl(endpoint);
+            config.setTemplate(template);
+            config.setHeaders(headers);
+            // HMAC signing is a single-webhook, one-secret feature; a Rocket.Chat
+            // destination authenticates with its own token instead.
+            config.setSignHmacSha256(false);
+
+            this.callWebHook(config, sender, slotName, content, timeStamp);
+
+            config.setUrl(savedUrl);
+            config.setTemplate(savedTemplate);
+            config.setHeaders(savedHeaders);
+            config.setSignHmacSha256(savedSignHmac);
+        } catch (JSONException e) {
+            Log.e("SmsBroadcastReceiver", "invalid Rocket.Chat destination: " + e.getMessage());
+        }
+    }
+
+    // Relays the SMS body as an actual outgoing text message via SmsManager.
+    // Requires SEND_SMS, requested best-effort in MainActivity; if it was denied
+    // this destination just silently can't deliver, same as any other
+    // permission-gated feature in this app — it never crashes the receiver.
+    private void dispatchSmsDestination(JSONObject destination, String content) {
+        String phoneNumber;
+        try {
+            phoneNumber = destination.getString(ForwardingConfig.DEST_PHONE_NUMBER);
+        } catch (JSONException e) {
+            Log.e("SmsBroadcastReceiver", "invalid SMS destination: " + e.getMessage());
+            return;
+        }
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return;
+        }
+        if (ContextCompat.checkSelfPermission(this.context, Manifest.permission.SEND_SMS)
+                != PackageManager.PERMISSION_GRANTED) {
+            Log.e("SmsBroadcastReceiver", "SEND_SMS not granted; cannot relay to " + phoneNumber);
+            return;
+        }
+        try {
+            SmsManager smsManager = SmsManager.getDefault();
+            List<String> parts = smsManager.divideMessage(content);
+            smsManager.sendMultipartTextMessage(phoneNumber, null,
+                    new ArrayList<>(parts), null, null);
+        } catch (Exception e) {
+            // SmsManager can throw for all sorts of carrier/radio reasons; never
+            // let an SMS-relay destination crash the receiver over it.
+            Log.e("SmsBroadcastReceiver", "SMS relay to " + phoneNumber + " failed: " + e.getMessage());
         }
     }
 

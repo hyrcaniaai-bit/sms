@@ -5,7 +5,7 @@
     android:fadeScrollbars="false">
 
     <LinearLayout
-        android:id="@+id/dialog_rocketchat_setup"
+        android:id="@+id/dialog_destinations"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
@@ -20,7 +20,14 @@
             style="@style/AppTheme.HelperText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/rocketchat_setup_info" />
+            android:text="@string/destinations_info" />
+
+        <TextView
+            style="@style/AppTheme.SectionHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_medium"
+            android:text="@string/label_rocketchat_section" />
 
         <com.google.android.material.textfield.TextInputLayout
             style="@style/AppTheme.TextInput"
@@ -70,21 +77,44 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
-            style="@style/AppTheme.TextInput"
+        <!-- Rows are added/removed here at runtime (one EditText + remove
+             button per recipient), inflated from row_destination_target.xml. -->
+        <LinearLayout
+            android:id="@+id/rocketchat_targets_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_medium"
-            android:hint="@string/label_rocketchat_target"
-            app:helperText="@string/rocketchat_target_recommendation">
+            android:orientation="vertical" />
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/input_rc_target"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="text" />
+        <Button
+            android:id="@+id/btn_add_rocketchat_target"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_small"
+            android:text="@string/btn_add_rocketchat_target" />
 
-        </com.google.android.material.textfield.TextInputLayout>
+        <TextView
+            style="@style/AppTheme.SectionHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_medium"
+            android:text="@string/label_sms_section" />
+
+        <LinearLayout
+            android:id="@+id/sms_targets_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_small"
+            android:orientation="vertical" />
+
+        <Button
+            android:id="@+id/btn_add_sms_target"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_small"
+            android:text="@string/btn_add_sms_target" />
 
     </LinearLayout>
 </ScrollView>

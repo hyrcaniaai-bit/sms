@@ -38,6 +38,22 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/AppTheme.TextInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_medium"
+            android:hint="@string/label_name"
+            app:helperText="@string/name_recommendation">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/input_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="text" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
         <androidx.appcompat.widget.SwitchCompat
             android:id="@+id/input_sender_regex"
             style="@style/AppTheme.SwitchRow"
@@ -84,15 +100,24 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Fills in the URL/headers/template fields above from a plain
-             server URL + token + target, so most users never see JSON. -->
+        <!-- Opens the "Destinations" dialog: lets this rule fan out to one or
+             more Rocket.Chat recipients and/or forward as SMS, without the
+             advanced URL/headers/template fields below ever being touched. -->
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_rocketchat_setup"
+            android:id="@+id/btn_destinations"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_medium"
-            android:text="@string/btn_rocketchat_setup" />
+            android:text="@string/btn_destinations" />
+
+        <!-- Holds the raw destinations JSON array built by that dialog; not
+             meant for manual editing, so it stays off-screen. -->
+        <EditText
+            android:id="@+id/input_destinations"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
 
         <!-- Tapping the header toggles the advanced section; the chevron is set
              from Java. -->

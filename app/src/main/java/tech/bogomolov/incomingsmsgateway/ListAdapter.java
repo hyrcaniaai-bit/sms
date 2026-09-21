@@ -1,6 +1,7 @@
 package tech.bogomolov.incomingsmsgateway;
 
 import android.content.Context;
+import android.os.Build;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -42,11 +43,25 @@ public class ListAdapter extends ArrayAdapter<ForwardingConfig> {
         String senderText = config.getSender();
         String asterisk = context.getString(R.string.asterisk);
         String any = context.getString(R.string.any);
+        String displaySender = senderText.equals(asterisk) ? any : senderText;
+        // The optional "name" field is meant to replace the raw sender in the
+        // list once set (e.g. "Bank X" instead of the sender ID); rules that
+        // never set one just keep showing the sender, unchanged from before.
+        String name = config.getName();
         TextView sender = row.findViewById(R.id.text_sender);
-        sender.setText(senderText.equals(asterisk) ? any : senderText);
+        sender.setText((name == null || name.isEmpty()) ? displaySender : name);
 
+        // A rule using "Destinations" instead of a manual webhook has an empty
+        // (or stale) url, which would otherwise show as a blank second line.
         TextView url = row.findViewById(R.id.text_url);
-        url.setText(config.getUrl());
+        int destinationsCount = 0;
+        try {
+            destinationsCount = config.getDestinationsArray().length();
+        } catch (org.json.JSONException ignored) {
+        }
+        url.setText(destinationsCount > 0
+                ? context.getString(R.string.list_item_destinations_summary, destinationsCount)
+                : config.getUrl());
 
         SwitchCompat switchSmsOnOff = row.findViewById(R.id.switch_sms_on_off);
         // Detach any listener a recycled row carries before syncing the state,
@@ -67,7 +82,29 @@ public class ListAdapter extends ArrayAdapter<ForwardingConfig> {
         deleteButton.setTag(R.id.delete_button, position);
         deleteButton.setOnClickListener(this::onDeleteClick);
 
+        View backupButton = row.findViewById(R.id.backup_button);
+        // ACTION_CREATE_DOCUMENT (Storage Access Framework) needs API 19+; below
+        // that there's no activity to resolve it, so hide the button instead of
+        // offering something that would crash on tap — same call SettingsActivity
+        // already makes for the bulk export/import section.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+            backupButton.setVisibility(View.GONE);
+        } else {
+            backupButton.setVisibility(View.VISIBLE);
+            backupButton.setTag(R.id.backup_button, position);
+            backupButton.setOnClickListener(this::onBackupClick);
+        }
+
         return row;
+    }
+
+    // Exports just this one rule via MainActivity (which owns the
+    // startActivityForResult/onActivityResult SAF flow — the classic API, not
+    // the newer Activity Result API, matching SettingsActivity's bulk export).
+    public void onBackupClick(View view) {
+        final int position = (int) view.getTag(R.id.backup_button);
+        final ForwardingConfig config = getItem(position);
+        ((MainActivity) context).exportSingleConfig(config);
     }
 
     public void onEditClick(View view) {

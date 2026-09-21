@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.DataSetObserver;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -25,9 +26,14 @@ import androidx.core.content.ContextCompat;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Objects;
 
@@ -37,6 +43,12 @@ public class MainActivity extends AppCompatActivity {
     private ListAdapter listAdapter;
 
     private static final int PERMISSION_CODE = 0;
+
+    // Single-rule backup export (per-row "Backup" button), reusing the same
+    // Storage Access Framework flow as the bulk export in SettingsActivity.
+    private static final int REQUEST_EXPORT_SINGLE = 10;
+    private static final String BACKUP_MIME_TYPE = "application/json";
+    private ForwardingConfig pendingExportConfig;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,6 +66,13 @@ public class MainActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             permissions.add(Manifest.permission.POST_NOTIFICATIONS);
+        }
+        // Only needed for a rule's "Destinations" SMS-relay option. Best-effort like
+        // POST_NOTIFICATIONS above: denial doesn't block the app, that one rule's SMS
+        // destination just won't deliver until it's granted (SmsBroadcastReceiver
+        // checks again before every send).
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+            permissions.add(Manifest.permission.SEND_SMS);
         }
 
         if (permissions.isEmpty()) {
@@ -120,6 +139,26 @@ public class MainActivity extends AppCompatActivity {
         if (count > 0) {
             retryItem.setTitle(getString(R.string.menu_retry_failed, count));
         }
+
+        // One mass switch for every rule's per-row on/off toggle. Label flips
+        // between "turn off all" and "turn on all" depending on whether any rule
+        // is currently enabled; hidden entirely with no rules to act on.
+        MenuItem toggleAllItem = menu.findItem(R.id.action_bar_toggle_all);
+        ArrayList<ForwardingConfig> configs = ForwardingConfig.getAll(this);
+        toggleAllItem.setVisible(!configs.isEmpty());
+        if (!configs.isEmpty()) {
+            boolean anyEnabled = false;
+            for (ForwardingConfig config : configs) {
+                if (config.getIsSmsEnabled()) {
+                    anyEnabled = true;
+                    break;
+                }
+            }
+            toggleAllItem.setTitle(anyEnabled
+                    ? getString(R.string.menu_turn_off_all)
+                    : getString(R.string.menu_turn_on_all));
+        }
+
         return super.onPrepareOptionsMenu(menu);
     }
 
@@ -137,6 +176,31 @@ public class MainActivity extends AppCompatActivity {
             FailedMessage.retryAll(this);
             Toast.makeText(this, getString(R.string.retry_failed_toast, count), Toast.LENGTH_LONG).show();
             invalidateOptionsMenu();
+            return true;
+        }
+
+        if (id == R.id.action_bar_toggle_all) {
+            ArrayList<ForwardingConfig> configs = ForwardingConfig.getAll(this);
+            boolean anyEnabled = false;
+            for (ForwardingConfig config : configs) {
+                if (config.getIsSmsEnabled()) {
+                    anyEnabled = true;
+                    break;
+                }
+            }
+            // Blunt toggle: turning off sets every rule off, turning back on sets
+            // every rule back on — it does not remember which rules were already
+            // individually disabled beforehand.
+            boolean newState = !anyEnabled;
+            for (ForwardingConfig config : configs) {
+                config.setIsSmsEnabled(newState);
+                config.save();
+            }
+            listAdapter.clear();
+            listAdapter.addAll(configs);
+            invalidateOptionsMenu();
+            Toast.makeText(this, newState ? R.string.toast_turned_on_all : R.string.toast_turned_off_all,
+                    Toast.LENGTH_SHORT).show();
             return true;
         }
 
@@ -253,5 +317,44 @@ public class MainActivity extends AppCompatActivity {
         return v -> {
             (new ForwardingConfigDialog(context, getLayoutInflater(), listAdapter)).showNew();
         };
+    }
+
+    // Per-row "Backup" button (ListAdapter): exports just this one rule, using the
+    // same Storage Access Framework flow and file shape (a one-element JSON array)
+    // as the bulk export in SettingsActivity, so the result can be imported back
+    // through the same "Import" button there.
+    public void exportSingleConfig(ForwardingConfig config) {
+        pendingExportConfig = config;
+        String sender = config.getSender();
+        String asterisk = getString(R.string.asterisk);
+        String label = (sender == null || sender.equals(asterisk)) ? getString(R.string.any) : sender;
+        String fileName = "sms-gateway-rule-" + label.replaceAll("[^a-zA-Z0-9._-]", "_") + ".json";
+
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType(BACKUP_MIME_TYPE);
+        intent.putExtra(Intent.EXTRA_TITLE, fileName);
+        startActivityForResult(intent, REQUEST_EXPORT_SINGLE);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQUEST_EXPORT_SINGLE || resultCode != RESULT_OK
+                || data == null || data.getData() == null || pendingExportConfig == null) {
+            return;
+        }
+        Uri uri = data.getData();
+        try (OutputStream output = getContentResolver().openOutputStream(uri)) {
+            JSONArray array = new JSONArray();
+            array.put(pendingExportConfig.toJson());
+            output.write(array.toString(2).getBytes(Charset.forName("UTF-8")));
+            Toast.makeText(this, getString(R.string.backup_export_success, 1), Toast.LENGTH_LONG).show();
+        } catch (IOException | JSONException e) {
+            Log.e("MainActivity", "single rule export failed: " + e);
+            Toast.makeText(this, R.string.backup_export_failed, Toast.LENGTH_LONG).show();
+        } finally {
+            pendingExportConfig = null;
+        }
     }
 }
