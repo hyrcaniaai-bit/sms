@@ -35,6 +35,22 @@
     <string name="label_sender_regex">Sender is a regular expression</string>
     <string name="sender_regex_info">Match the sender as a regex (substring). E.g. BANK matches VM-BANK and AD-BANK. The * wildcard above still means any sender.</string>
     <string name="json_template_recommendation">Available placeholders %text%, %from%, %sentStamp% (ms), %receivedStamp% (ms), %sim%, %version%, %battery%, %power%, %network%, %Regex=…% (extract from text)</string>
+    <string name="btn_rocketchat_setup">Rocket.Chat quick setup</string>
+    <string name="title_rocketchat_setup">Rocket.Chat quick setup</string>
+    <string name="rocketchat_setup_info">Fills in the webhook URL, headers and payload above for you, so you never have to edit JSON.</string>
+    <string name="label_rocketchat_server_url">Rocket.Chat server URL</string>
+    <string name="rocketchat_server_url_recommendation">E.g. https://chat.example.com (no path after the domain)</string>
+    <string name="label_rocketchat_user_id">User ID</string>
+    <string name="label_rocketchat_token">Personal access token</string>
+    <string name="rocketchat_token_recommendation">Create both together in Rocket.Chat: avatar menu → My Account → Personal Access Tokens</string>
+    <string name="label_rocketchat_target">Send to (@username or #channel)</string>
+    <string name="rocketchat_target_recommendation">Where the SMS should be posted, e.g. @john or general</string>
+    <string name="btn_apply">Apply</string>
+    <string name="error_empty_rocketchat_server_url">Empty server URL</string>
+    <string name="error_wrong_rocketchat_server_url">Wrong URL</string>
+    <string name="error_empty_rocketchat_user_id">Empty User ID</string>
+    <string name="error_empty_rocketchat_token">Empty token</string>
+    <string name="error_empty_rocketchat_target">Empty target</string>
     <string name="error_empty_sender">Empty sender</string>
     <string name="error_empty_url">Empty URL</string>
     <string name="error_wrong_url">Wrong URL</string>

@@ -35,6 +35,22 @@
     <string name="label_sender_regex">Отправитель — регулярное выражение</string>
     <string name="sender_regex_info">Сопоставлять отправителя как regex (подстрока). Напр., BANK подходит для VM-BANK и AD-BANK. Символ * выше по-прежнему означает любого отправителя.</string>
     <string name="json_template_recommendation">Доступные заполнители %text%, %from%, %sentStamp% (мс), %receivedStamp% (мс), %sim%, %version%, %battery%, %power%, %network%, %Regex=…% (извлечь из текста)</string>
+    <string name="btn_rocketchat_setup">Быстрая настройка Rocket.Chat</string>
+    <string name="title_rocketchat_setup">Быстрая настройка Rocket.Chat</string>
+    <string name="rocketchat_setup_info">Автоматически заполнит URL вебхука, заголовки и шаблон выше, чтобы вам не пришлось редактировать JSON вручную.</string>
+    <string name="label_rocketchat_server_url">URL сервера Rocket.Chat</string>
+    <string name="rocketchat_server_url_recommendation">Например, https://chat.example.com (без пути после домена)</string>
+    <string name="label_rocketchat_user_id">User ID</string>
+    <string name="label_rocketchat_token">Персональный токен доступа</string>
+    <string name="rocketchat_token_recommendation">Создаются вместе в Rocket.Chat: меню профиля → Мой аккаунт → Personal Access Tokens</string>
+    <string name="label_rocketchat_target">Отправить в (@пользователь или #канал)</string>
+    <string name="rocketchat_target_recommendation">Куда отправлять SMS, например @ivan или general</string>
+    <string name="btn_apply">Применить</string>
+    <string name="error_empty_rocketchat_server_url">Пустой URL сервера</string>
+    <string name="error_wrong_rocketchat_server_url">Неверный URL-адрес</string>
+    <string name="error_empty_rocketchat_user_id">Пустой User ID</string>
+    <string name="error_empty_rocketchat_token">Пустой токен</string>
+    <string name="error_empty_rocketchat_target">Пустое поле получателя</string>
     <string name="error_empty_sender">Пустой отправитель</string>
     <string name="error_empty_url">Пустой URL-адрес</string>
     <string name="error_wrong_url">Неверный URL-адрес</string>

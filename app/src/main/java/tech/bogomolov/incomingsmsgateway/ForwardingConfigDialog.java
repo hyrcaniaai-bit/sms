@@ -78,6 +78,7 @@ public class ForwardingConfigDialog {
 
         prepareSimSelector(context, view, 0);
         setupAdvancedToggle(view, false);
+        setupRocketChatQuickSetup(view);
 
         builder.setView(view);
         builder.setPositiveButton(R.string.btn_add, null);
@@ -161,6 +162,7 @@ public class ForwardingConfigDialog {
         // Auto-expand advanced when editing a rule that already relies on it, so the
         // user doesn't have to hunt for settings they previously configured.
         setupAdvancedToggle(view, hasNonDefaultAdvanced(config));
+        setupRocketChatQuickSetup(view);
 
         builder.setView(view);
         builder.setPositiveButton(R.string.btn_save, null);
@@ -306,6 +308,107 @@ public class ForwardingConfigDialog {
     private void updateAdvancedHeader(TextView header, boolean expanded) {
         String arrow = expanded ? "▾  " : "▸  ";
         header.setText(arrow + context.getString(R.string.label_advanced));
+    }
+
+    // Wires the "Rocket.Chat quick setup" button: a small sub-dialog that asks
+    // only for a server URL, User ID, personal access token and a target
+    // (channel/username), then derives the webhook URL, headers and JSON
+    // payload template that the plain form below would otherwise require the
+    // user to hand-edit. Uses Rocket.Chat's chat.postMessage REST endpoint
+    // authenticated via a Personal Access Token (X-Auth-Token/X-User-Id
+    // headers) rather than a username/password login, since that needs only
+    // one HTTP request — matching how RequestWorker/Request already work.
+    private void setupRocketChatQuickSetup(View formView) {
+        View button = formView.findViewById(R.id.btn_rocketchat_setup);
+        button.setOnClickListener(v -> showRocketChatQuickSetup(formView));
+    }
+
+    private void showRocketChatQuickSetup(View formView) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        View view = layoutInflater.inflate(R.layout.dialog_rocketchat_setup, null);
+
+        builder.setTitle(R.string.title_rocketchat_setup);
+        builder.setView(view);
+        builder.setPositiveButton(R.string.btn_apply, null);
+        builder.setNegativeButton(R.string.btn_cancel, null);
+
+        final AlertDialog dialog = builder.show();
+        Objects.requireNonNull(dialog.getWindow())
+                .setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            final EditText serverUrlInput = view.findViewById(R.id.input_rc_server_url);
+            String serverUrl = serverUrlInput.getText().toString().trim();
+            if (TextUtils.isEmpty(serverUrl)) {
+                serverUrlInput.setError(context.getString(R.string.error_empty_rocketchat_server_url));
+                return;
+            }
+
+            // Strip trailing slash(es) and, unless already pasted in full,
+            // point at the chat.postMessage REST endpoint.
+            String base = serverUrl.replaceAll("/+$", "");
+            String endpoint = base.endsWith("/api/v1/chat.postMessage")
+                    ? base
+                    : base + "/api/v1/chat.postMessage";
+            try {
+                new URL(endpoint);
+            } catch (MalformedURLException e) {
+                serverUrlInput.setError(context.getString(R.string.error_wrong_rocketchat_server_url));
+                return;
+            }
+
+            final EditText userIdInput = view.findViewById(R.id.input_rc_user_id);
+            String userId = userIdInput.getText().toString().trim();
+            if (TextUtils.isEmpty(userId)) {
+                userIdInput.setError(context.getString(R.string.error_empty_rocketchat_user_id));
+                return;
+            }
+
+            final EditText tokenInput = view.findViewById(R.id.input_rc_token);
+            String token = tokenInput.getText().toString().trim();
+            if (TextUtils.isEmpty(token)) {
+                tokenInput.setError(context.getString(R.string.error_empty_rocketchat_token));
+                return;
+            }
+
+            final EditText targetInput = view.findViewById(R.id.input_rc_target);
+            String target = targetInput.getText().toString().trim();
+            if (TextUtils.isEmpty(target)) {
+                targetInput.setError(context.getString(R.string.error_empty_rocketchat_target));
+                return;
+            }
+
+            try {
+                JSONObject headers = new JSONObject();
+                headers.put("X-Auth-Token", token);
+                headers.put("X-User-Id", userId);
+                headers.put("Content-Type", "application/json");
+
+                JSONObject template = new JSONObject();
+                template.put("channel", target);
+                template.put("text", "%text%");
+
+                final EditText urlInput = formView.findViewById(R.id.input_url);
+                final EditText headersInput = formView.findViewById(R.id.input_json_headers);
+                final EditText templateInput = formView.findViewById(R.id.input_json_template);
+                urlInput.setText(endpoint);
+                headersInput.setText(headers.toString(2));
+                templateInput.setText(template.toString(2));
+            } catch (JSONException e) {
+                // Every value above is a plain string being put into a fresh
+                // JSONObject; there is nothing here that can actually fail.
+                return;
+            }
+
+            // Reveal what got filled in — the user isn't required to look,
+            // but nothing here should be hidden from them either.
+            View advancedSection = formView.findViewById(R.id.advanced_section);
+            TextView advancedHeader = formView.findViewById(R.id.advanced_header);
+            advancedSection.setVisibility(View.VISIBLE);
+            updateAdvancedHeader(advancedHeader, true);
+
+            dialog.dismiss();
+        });
     }
 
     // True when the rule deviates from the defaults on any advanced field, so the

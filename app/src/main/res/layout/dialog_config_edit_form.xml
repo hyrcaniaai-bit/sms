@@ -84,6 +84,16 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- Fills in the URL/headers/template fields above from a plain
+             server URL + token + target, so most users never see JSON. -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_rocketchat_setup"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_medium"
+            android:text="@string/btn_rocketchat_setup" />
+
         <!-- Tapping the header toggles the advanced section; the chevron is set
              from Java. -->
         <TextView
