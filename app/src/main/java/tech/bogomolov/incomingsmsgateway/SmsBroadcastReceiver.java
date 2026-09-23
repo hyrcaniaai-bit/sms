@@ -163,7 +163,7 @@ public class SmsBroadcastReceiver extends BroadcastReceiver {
             // destination authenticates with its own token instead.
             config.setSignHmacSha256(false);
 
-            this.callWebHook(config, sender, slotName, content, timeStamp);
+            this.callWebHook(config, RocketChatWebhook.displaySender(sender), slotName, content, timeStamp);
 
             config.setUrl(savedUrl);
             config.setTemplate(savedTemplate);
