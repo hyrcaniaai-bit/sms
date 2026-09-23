@@ -33,14 +33,18 @@ final class RocketChatWebhook {
         return headers;
     }
 
-    // Message body format, exact wording requested:
-    //   NewSMS from: <sender>
-    //   -----------
+    // Message body format:
+    //   پیامک جدید از طرف: <sender>
+    //   ----------------------
     //   <message text>
+    // Starts with a Persian word (not the earlier "NewSMS from:") so chat
+    // clients detect right-to-left direction for the whole message instead of
+    // rendering it left-to-right just because the first strong-direction
+    // character was Latin.
     static JSONObject buildTemplate(String target) throws JSONException {
         JSONObject template = new JSONObject();
         template.put("channel", target);
-        template.put("text", "NewSMS from: %from%\n-----------\n%text%");
+        template.put("text", "پیامک جدید از طرف: %from%\n----------------------\n%text%");
         return template;
     }
 }
