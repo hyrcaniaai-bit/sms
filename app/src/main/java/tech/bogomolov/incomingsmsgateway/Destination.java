@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -160,6 +161,34 @@ public class Destination {
             }
         }
         return destinations;
+    }
+
+    // Every stored destination as a JSON array, for the backup file written by
+    // ForwardingConfig.exportToJson().
+    public static JSONArray exportToJsonArray(Context context) throws JSONException {
+        JSONArray array = new JSONArray();
+        for (Destination destination : getAll(context)) {
+            array.put(destination.toJson());
+        }
+        return array;
+    }
+
+    // Restores destinations from a backup. Each keeps its original key (rules
+    // refer to destinations by key), so re-importing overwrites the matching
+    // destination instead of duplicating it. An entry without a key can't be
+    // referenced by any rule and is skipped.
+    public static void importFromJsonArray(Context context, JSONArray array) throws JSONException {
+        for (int i = 0; i < array.length(); i++) {
+            JSONObject json = array.getJSONObject(i);
+            if (!json.has(KEY_KEY)) {
+                Log.e("Destination", "skipping backup destination without key: " + json);
+                continue;
+            }
+            Destination destination = fromStoredValue(context, null, json.toString());
+            if (destination != null) {
+                destination.save();
+            }
+        }
     }
 
     // Looks up one destination by key, or null if it no longer exists (e.g. a

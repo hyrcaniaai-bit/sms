@@ -105,11 +105,11 @@
     <string name="toast_app_turned_off">Приложение выключено</string>
     <string name="toast_app_turned_on">Приложение включено</string>
     <string name="label_backup_section">Резервная копия</string>
-    <string name="backup_info">Экспортируйте правила пересылки в файл для резервной копии, а затем импортируйте файл, чтобы восстановить их или перенести на другое устройство.</string>
+    <string name="backup_info">Экспортируйте правила пересылки и получателей в файл для резервной копии, а затем импортируйте файл, чтобы восстановить их или перенести на другое устройство.</string>
     <string name="btn_export">Экспорт</string>
     <string name="btn_import">Импорт</string>
     <string name="backup_export_warning_title">Экспорт правил</string>
-    <string name="backup_export_warning_message">Экспортированный файл содержит URL вебхуков, заголовки и секреты HMAC в открытом виде. Храните его в надёжном месте.</string>
+    <string name="backup_export_warning_message">Экспортированный файл содержит URL вебхуков, заголовки, секреты HMAC и токены Rocket.Chat в открытом виде. Храните его в надёжном месте.</string>
     <string name="backup_export_success">Экспортировано правил: %d</string>
     <string name="backup_export_failed">Не удалось экспортировать</string>
     <string name="backup_import_success">Импортировано правил: %d</string>

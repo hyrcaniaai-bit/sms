@@ -234,6 +234,48 @@ public class ForwardingConfigTest {
     }
 
     @Test
+    public void testExportImportRoundTripIncludesDestinations() throws Exception {
+        clearDestinations();
+        Destination destination = new Destination(context);
+        destination.setName("Bank alerts");
+        destination.setType(Destination.TYPE_ROCKETCHAT);
+        destination.setServerUrl("https://chat.example");
+        destination.setUserId("uid");
+        destination.setToken("tok");
+        destination.setTarget("#alerts");
+        destination.save();
+        String destinationKey = destination.getKey();
+
+        ForwardingConfig config = new ForwardingConfig(context);
+        config.setSender("+16505551111");
+        config.setUrl("https://example.com");
+        config.setTemplate("{}");
+        config.setHeaders("{}");
+        config.setRetriesNumber(3);
+        config.setDestinationIds("[\"" + destinationKey + "\"]");
+        config.save();
+
+        String exported = ForwardingConfig.exportToJson(context);
+
+        // Wipe both rules and destinations, simulating a fresh device.
+        clearSharedPrefs();
+        clearDestinations();
+
+        assertEquals(1, ForwardingConfig.importFromJson(context, exported));
+
+        Destination loaded = Destination.findByKey(context, destinationKey);
+        assertNotNull(loaded);
+        assertEquals("Bank alerts", loaded.getName());
+        assertEquals("https://chat.example", loaded.getServerUrl());
+        assertEquals("uid", loaded.getUserId());
+        assertEquals("tok", loaded.getToken());
+        assertEquals("#alerts", loaded.getTarget());
+        assertEquals("[\"" + destinationKey + "\"]",
+                ForwardingConfig.getAll(context).get(0).getDestinationIds());
+        clearDestinations();
+    }
+
+    @Test
     public void testImportMergesByKeyWithoutDuplicating() throws Exception {
         ForwardingConfig config = new ForwardingConfig(context);
         config.setSender("+16505551111");
@@ -294,6 +336,12 @@ public class ForwardingConfigTest {
         json.put("template", "{}");
         json.put("headers", "{}");
         return json;
+    }
+
+    private void clearDestinations() {
+        context.getSharedPreferences(
+                context.getString(R.string.key_destinations_preference),
+                Context.MODE_PRIVATE).edit().clear().commit();
     }
 
     private void putRaw(String key, String value) {

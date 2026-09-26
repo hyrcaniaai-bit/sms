@@ -381,17 +381,27 @@ public class ForwardingConfig {
         return config;
     }
 
-    // Serializes every stored rule to a JSON array string for backup (issue #76).
-    // Scope is forwarding rules only — heartbeat settings and the stored
+    // Backup file sections. Older backups (before Destinations existed) are a
+    // bare JSON array of rules; importFromJson() still accepts that form.
+    private static final String BACKUP_RULES = "rules";
+    private static final String BACKUP_DESTINATIONS = "destinations";
+
+    // Serializes every stored rule, plus the reusable Destinations the rules
+    // point at by key, to a JSON object string for backup (issue #76). Without
+    // the destinations a restored rule would reference keys that don't exist on
+    // the new device and forward nowhere. Heartbeat settings and the stored
     // failed-message payloads live in their own SharedPreferences files and are
-    // not touched. The output carries webhook URLs, custom headers and HMAC
-    // secrets verbatim, so callers warn the user it is sensitive.
+    // not touched. The output carries webhook URLs, custom headers, HMAC secrets
+    // and Rocket.Chat tokens verbatim, so callers warn the user it is sensitive.
     public static String exportToJson(Context context) throws JSONException {
-        JSONArray array = new JSONArray();
+        JSONArray rules = new JSONArray();
         for (ForwardingConfig config : getAll(context)) {
-            array.put(config.toJson());
+            rules.put(config.toJson());
         }
-        return array.toString(2);
+        JSONObject backup = new JSONObject();
+        backup.put(BACKUP_RULES, rules);
+        backup.put(BACKUP_DESTINATIONS, Destination.exportToJsonArray(context));
+        return backup.toString(2);
     }
 
     // Restores rules from a backup produced by exportToJson(). Each rule keeps its
@@ -400,7 +410,20 @@ public class ForwardingConfig {
     // Returns the number of rules imported. Throws JSONException on a malformed
     // file so the caller can report it.
     public static int importFromJson(Context context, String content) throws JSONException {
-        JSONArray array = new JSONArray(content);
+        JSONArray array;
+        String trimmed = content.trim();
+        if (trimmed.startsWith("[")) {
+            // Legacy backup: rules only.
+            array = new JSONArray(trimmed);
+        } else {
+            JSONObject backup = new JSONObject(trimmed);
+            array = backup.getJSONArray(BACKUP_RULES);
+            // Destinations first, so the imported rules' destination keys resolve.
+            JSONArray destinations = backup.optJSONArray(BACKUP_DESTINATIONS);
+            if (destinations != null) {
+                Destination.importFromJsonArray(context, destinations);
+            }
+        }
         int imported = 0;
         for (int i = 0; i < array.length(); i++) {
             JSONObject json = array.getJSONObject(i);
