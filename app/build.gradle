@@ -1,13 +1,16 @@
 apply plugin: 'com.android.application'
 
-// Bump appVersionName (and versionCode) for a release. The GitHub Actions
-// build names the APK after it (sms-gateway-v2.4.0.apk). Inside the app
-// (Settings screen, Syslog dialog) CI builds also show the workflow run
-// number ("2.4.0-build.57") so installed builds can be told apart; local
-// builds show the plain version.
-def appVersionName = "2.4.0"
-def ciBuildNumber = System.getenv("GITHUB_RUN_NUMBER")
-def fullVersionName = ciBuildNumber ? "${appVersionName}-build.${ciBuildNumber}" : appVersionName
+// Every GitHub Actions build gets a new version automatically: the workflow
+// run number becomes the last part of the version name (2.4.57, 2.4.58, ...)
+// and is added to versionCode, so each APK is newer than the last and installs
+// over it as an update. Bump appVersionPrefix by hand only for a bigger
+// release (e.g. "2.5"). Local builds, which have no run number, stay at
+// <prefix>.0 with the base versionCode.
+def appVersionPrefix = "2.4"
+def baseVersionCode = 13
+def ciBuildNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "0").toInteger()
+def fullVersionName = "${appVersionPrefix}.${ciBuildNumber}".toString()
+def fullVersionCode = baseVersionCode + ciBuildNumber
 
 android {
     namespace 'tech.bogomolov.incomingsmsgateway'
@@ -17,7 +20,7 @@ android {
         applicationId "tech.bogomolov.incomingsmsgateway"
         minSdkVersion 14
         targetSdkVersion 33
-        versionCode 13
+        versionCode fullVersionCode
         versionName fullVersionName
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -69,10 +72,10 @@ android {
     }
 }
 
-// Prints the plain version name (without the CI build number); the GitHub
-// workflow uses it to name the APK, e.g. sms-gateway-v2.4.0.apk.
+// Prints the version name; the GitHub workflow uses it to name the APK,
+// e.g. sms-gateway-v2.4.57.apk.
 tasks.register('printVersionName') {
-    def name = appVersionName
+    def name = fullVersionName
     doLast {
         println name
     }
