@@ -234,6 +234,11 @@ public class ForwardingConfigDialog {
         if (!hasDestinations) {
             if (TextUtils.isEmpty(url)) {
                 urlInput.setError(context.getString(R.string.error_empty_url));
+                if (!SHOW_ADVANCED) {
+                    // The URL field is hidden, so its error is invisible; point
+                    // the user at Destinations instead.
+                    Toast.makeText(context, R.string.error_no_destinations, Toast.LENGTH_LONG).show();
+                }
                 return null;
             }
             try {
@@ -328,12 +333,24 @@ public class ForwardingConfigDialog {
         }
     }
 
+    // "Advanced parameters" is hidden from the edit dialog: rules are meant to
+    // forward through Destinations only. The fields stay in the layout (still
+    // populated and saved), so an existing rule keeps its advanced values;
+    // flip this to bring the section back.
+    private static final boolean SHOW_ADVANCED = false;
+
     // The advanced options live in a section collapsed by default so the basic
     // form is just sender + filter + URL. The bold header doubles as the toggle,
     // with a chevron showing the current state.
     private void setupAdvancedToggle(View view, boolean expanded) {
         final TextView header = view.findViewById(R.id.advanced_header);
         final View section = view.findViewById(R.id.advanced_section);
+
+        if (!SHOW_ADVANCED) {
+            header.setVisibility(View.GONE);
+            section.setVisibility(View.GONE);
+            return;
+        }
 
         section.setVisibility(expanded ? View.VISIBLE : View.GONE);
         updateAdvancedHeader(header, expanded);

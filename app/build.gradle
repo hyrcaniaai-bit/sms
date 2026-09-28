@@ -27,8 +27,28 @@ android {
         vectorDrawables.useSupportLibrary = true
     }
 
+    // One fixed signing key, committed to the repo, for every build (local and
+    // GitHub Actions). Without it each CI runner signs with its own freshly
+    // generated debug key, and Android refuses to install an APK over one signed
+    // with a different key — forcing an uninstall (and losing the rules) on
+    // every update. Being in the repo, anyone with the source can sign with it;
+    // that is the accepted trade-off for this self-distributed build.
+    signingConfigs {
+        shared {
+            storeFile file('signing/app-signing.p12')
+            storeType 'pkcs12'
+            storePassword 'smsgateway'
+            keyAlias 'sms'
+            keyPassword 'smsgateway'
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig signingConfigs.shared
+        }
         release {
+            signingConfig signingConfigs.shared
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
