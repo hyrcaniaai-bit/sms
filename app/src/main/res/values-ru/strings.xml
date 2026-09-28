@@ -113,5 +113,6 @@
     <string name="backup_export_success">Экспортировано правил: %d</string>
     <string name="backup_export_failed">Не удалось экспортировать</string>
     <string name="backup_import_success">Импортировано правил: %d</string>
+    <string name="label_app_version">Версия %1$s (%2$d)</string>
     <string name="backup_import_failed">Не удалось импортировать: неверный файл резервной копии</string>
 </resources>

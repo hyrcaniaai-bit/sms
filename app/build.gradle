@@ -1,5 +1,14 @@
 apply plugin: 'com.android.application'
 
+// Version shown in the app (Settings screen, Syslog dialog) and in the APK file
+// name the GitHub Actions build produces. Bump appVersionName (and versionCode)
+// for a release. CI builds append the workflow run number ("2.4.0-build.57") so
+// every APK built from GitHub can be told apart; local builds keep the plain
+// version.
+def appVersionName = "2.4.0"
+def ciBuildNumber = System.getenv("GITHUB_RUN_NUMBER")
+def fullVersionName = ciBuildNumber ? "${appVersionName}-build.${ciBuildNumber}" : appVersionName
+
 android {
     namespace 'tech.bogomolov.incomingsmsgateway'
     compileSdkVersion 33
@@ -9,7 +18,7 @@ android {
         minSdkVersion 14
         targetSdkVersion 33
         versionCode 13
-        versionName "2.4.0"
+        versionName fullVersionName
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -37,6 +46,14 @@ android {
 
     buildFeatures {
         buildConfig true
+    }
+}
+
+// Prints the version name; the GitHub workflow uses it to name the APK.
+tasks.register('printVersionName') {
+    def name = fullVersionName
+    doLast {
+        println name
     }
 }
 

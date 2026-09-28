@@ -25,8 +25,17 @@ jobs:
     - name: Build Debug APK
       run: ./gradlew assembleDebug
 
+    # Name the APK after the app version (e.g. sms-gateway-v2.4.0-build.57-debug.apk)
+    # so downloaded builds can be told apart.
+    - name: Rename APK with version
+      id: version
+      run: |
+        VERSION=$(./gradlew -q :app:printVersionName | tail -n 1)
+        echo "name=$VERSION" >> "$GITHUB_OUTPUT"
+        mv app/build/outputs/apk/debug/app-debug.apk "app/build/outputs/apk/debug/sms-gateway-v${VERSION}-debug.apk"
+
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug-apk
+        name: sms-gateway-v${{ steps.version.outputs.name }}-debug
         path: app/build/outputs/apk/debug/*.apk

@@ -12,6 +12,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
@@ -80,6 +81,7 @@ public class SettingsActivity extends AppCompatActivity {
         testButton.setOnClickListener(v -> testHeartbeat());
 
         setupBackupSection();
+        setupVersionLabel();
     }
 
     // The Storage Access Framework intents used for backup require API 19+; hide
@@ -94,6 +96,12 @@ public class SettingsActivity extends AppCompatActivity {
 
         findViewById(R.id.btn_export).setOnClickListener(v -> confirmExport());
         findViewById(R.id.btn_import).setOnClickListener(v -> startImport());
+    }
+
+    private void setupVersionLabel() {
+        TextView version = findViewById(R.id.app_version);
+        version.setText(getString(R.string.label_app_version,
+                BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE));
     }
 
     // Warn before exporting: the file holds webhook URLs, custom headers and HMAC

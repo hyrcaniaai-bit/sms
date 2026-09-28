@@ -147,5 +147,14 @@
 
         </LinearLayout>
 
+        <TextView
+            android:id="@+id/app_version"
+            style="@style/AppTheme.HelperText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_medium"
+            android:layout_marginBottom="@dimen/spacing_medium"
+            android:gravity="center" />
+
     </LinearLayout>
 </ScrollView>
