@@ -1,15 +1,20 @@
 apply plugin: 'com.android.application'
 
-// Every GitHub Actions build gets a new version automatically: the workflow
-// run number becomes the last part of the version name (2.4.57, 2.4.58, ...)
-// and is added to versionCode, so each APK is newer than the last and installs
-// over it as an update. Bump appVersionPrefix by hand only for a bigger
-// release (e.g. "2.5"). Local builds, which have no run number, stay at
-// <prefix>.0 with the base versionCode.
-def appVersionPrefix = "2.4"
+// Every GitHub Actions build gets a new version automatically, always three
+// single digits (X.Y.Z), carried like an odometer — 2.4.9 is followed by
+// 2.5.0, 2.9.9 by 3.0.0. Counting starts after workflow run #21 (the last run
+// before this scheme), so run #22 is 2.4.1, run #23 is 2.4.2, and so on.
+// versionCode keeps growing with the raw run number, so each APK is newer than
+// the last and installs over it as an update. Local builds, which have no run
+// number, stay at 2.4.0 with the base versionCode.
+def baseVersion = 240          // 2.4.0
+def firstCountedRun = 22       // this run becomes 2.4.1
 def baseVersionCode = 13
 def ciBuildNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "0").toInteger()
-def fullVersionName = "${appVersionPrefix}.${ciBuildNumber}".toString()
+def versionNumber = ciBuildNumber > 0
+        ? Math.max(baseVersion, baseVersion + ciBuildNumber - firstCountedRun + 1)
+        : baseVersion
+def fullVersionName = "${versionNumber.intdiv(100)}.${versionNumber.intdiv(10) % 10}.${versionNumber % 10}".toString()
 def fullVersionCode = baseVersionCode + ciBuildNumber
 
 android {
@@ -73,7 +78,7 @@ android {
 }
 
 // Prints the version name; the GitHub workflow uses it to name the APK,
-// e.g. sms-gateway-v2.4.57.apk.
+// e.g. sms-gateway-v2.9.7.apk.
 tasks.register('printVersionName') {
     def name = fullVersionName
     doLast {

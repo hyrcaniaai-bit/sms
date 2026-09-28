@@ -25,7 +25,7 @@ jobs:
     - name: Build Debug APK
       run: ./gradlew assembleDebug
 
-    # Name the APK after the app version (e.g. sms-gateway-v2.4.57.apk)
+    # Name the APK after the app version (e.g. sms-gateway-v2.9.7.apk)
     # so downloaded builds can be told apart.
     - name: Rename APK with version
       id: version
