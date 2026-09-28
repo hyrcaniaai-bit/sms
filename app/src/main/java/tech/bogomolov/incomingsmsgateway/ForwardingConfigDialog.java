@@ -172,9 +172,9 @@ public class ForwardingConfigDialog {
         final EditText destinationsInput = view.findViewById(R.id.input_destinations);
         destinationsInput.setText(config.getDestinationIds());
 
-        // Auto-expand advanced when editing a rule that already relies on it, so the
-        // user doesn't have to hunt for settings they previously configured.
-        setupAdvancedToggle(view, hasNonDefaultAdvanced(config));
+        // Advanced parameters stay hidden (collapsed) when the dialog opens, even
+        // for a rule that uses them; tapping the header reveals them.
+        setupAdvancedToggle(view, false);
         setupDestinations(view);
         updateDestinationsButtonLabel(view);
 
@@ -234,11 +234,6 @@ public class ForwardingConfigDialog {
         if (!hasDestinations) {
             if (TextUtils.isEmpty(url)) {
                 urlInput.setError(context.getString(R.string.error_empty_url));
-                if (!SHOW_ADVANCED) {
-                    // The URL field is hidden, so its error is invisible; point
-                    // the user at Destinations instead.
-                    Toast.makeText(context, R.string.error_no_destinations, Toast.LENGTH_LONG).show();
-                }
                 return null;
             }
             try {
@@ -333,24 +328,12 @@ public class ForwardingConfigDialog {
         }
     }
 
-    // "Advanced parameters" is hidden from the edit dialog: rules are meant to
-    // forward through Destinations only. The fields stay in the layout (still
-    // populated and saved), so an existing rule keeps its advanced values;
-    // flip this to bring the section back.
-    private static final boolean SHOW_ADVANCED = false;
-
     // The advanced options live in a section collapsed by default so the basic
     // form is just sender + filter + URL. The bold header doubles as the toggle,
     // with a chevron showing the current state.
     private void setupAdvancedToggle(View view, boolean expanded) {
         final TextView header = view.findViewById(R.id.advanced_header);
         final View section = view.findViewById(R.id.advanced_section);
-
-        if (!SHOW_ADVANCED) {
-            header.setVisibility(View.GONE);
-            section.setVisibility(View.GONE);
-            return;
-        }
 
         section.setVisibility(expanded ? View.VISIBLE : View.GONE);
         updateAdvancedHeader(header, expanded);
@@ -433,24 +416,6 @@ public class ForwardingConfigDialog {
         button.setText(count > 0
                 ? context.getString(R.string.btn_destinations_with_count, count)
                 : context.getString(R.string.btn_destinations));
-    }
-
-    // True when the rule deviates from the defaults on any advanced field, so the
-    // edit dialog knows to reveal the advanced section instead of hiding settings
-    // the user already relies on. The Webhook URL field lives in Advanced too, so
-    // a rule with no Destinations selected (meaning it depends on that URL) also
-    // counts, or the user would have to hunt for the URL they're relying on.
-    private boolean hasNonDefaultAdvanced(ForwardingConfig config) {
-        return destinationsArrayLength(config.getDestinationIds()) == 0
-                || config.getSimSlot() != 0
-                || !ForwardingConfig.getDefaultJsonTemplate().equals(config.getTemplate())
-                || !ForwardingConfig.getDefaultJsonHeaders().equals(config.getHeaders())
-                || config.getRetriesNumber() != ForwardingConfig.getDefaultRetriesNumber()
-                || config.getIgnoreSsl()
-                || config.getChunkedMode()
-                || config.getStoreFailed()
-                || config.getLocalMode()
-                || config.getSignHmacSha256();
     }
 
     private void prepareSimSelector(Context context, View view, int selected) {
