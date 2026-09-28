@@ -328,6 +328,9 @@ public class ForwardingConfigDialog {
         }
     }
 
+    // "Advanced parameters" is disabled: set to true to make it openable again.
+    private static final boolean ADVANCED_ENABLED = false;
+
     // The advanced options live in a section collapsed by default so the basic
     // form is just sender + filter + URL. The bold header doubles as the toggle,
     // with a chevron showing the current state.
@@ -337,6 +340,15 @@ public class ForwardingConfigDialog {
 
         section.setVisibility(expanded ? View.VISIBLE : View.GONE);
         updateAdvancedHeader(header, expanded);
+
+        if (!ADVANCED_ENABLED) {
+            // Disabled: the header stays visible but greyed out and can't be
+            // tapped, so the section never opens.
+            header.setEnabled(false);
+            header.setClickable(false);
+            header.setAlpha(0.4f);
+            return;
+        }
 
         header.setOnClickListener(v -> {
             boolean nowVisible = section.getVisibility() != View.VISIBLE;
