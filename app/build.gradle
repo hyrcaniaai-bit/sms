@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
-// Version shown in the app (Settings screen, Syslog dialog) and in the APK file
-// name the GitHub Actions build produces. Bump appVersionName (and versionCode)
-// for a release. CI builds append the workflow run number ("2.4.0-build.57") so
-// every APK built from GitHub can be told apart; local builds keep the plain
-// version.
+// Bump appVersionName (and versionCode) for a release. The GitHub Actions
+// build names the APK after it (sms-gateway-v2.4.0.apk). Inside the app
+// (Settings screen, Syslog dialog) CI builds also show the workflow run
+// number ("2.4.0-build.57") so installed builds can be told apart; local
+// builds show the plain version.
 def appVersionName = "2.4.0"
 def ciBuildNumber = System.getenv("GITHUB_RUN_NUMBER")
 def fullVersionName = ciBuildNumber ? "${appVersionName}-build.${ciBuildNumber}" : appVersionName
@@ -49,9 +49,10 @@ android {
     }
 }
 
-// Prints the version name; the GitHub workflow uses it to name the APK.
+// Prints the plain version name (without the CI build number); the GitHub
+// workflow uses it to name the APK, e.g. sms-gateway-v2.4.0.apk.
 tasks.register('printVersionName') {
-    def name = fullVersionName
+    def name = appVersionName
     doLast {
         println name
     }
